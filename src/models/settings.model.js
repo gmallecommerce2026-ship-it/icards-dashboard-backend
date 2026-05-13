@@ -109,8 +109,13 @@ const settingsSchema = new mongoose.Schema({
             destination: String,
             type: { type: String, enum: ['301', '302'] }
         }]
+    },
+    occasionOrder: {
+        type: [String],
+        default: [],
+        description: 'Mảng các key (Category-Group-Type) lưu thứ tự hiển thị section Những dịp lan toả niềm vui'
     }
-});
+}, { timestamps: true });
 
 const Setting = mongoose.model('Setting', settingsSchema);
 const initializeSettings = async () => {

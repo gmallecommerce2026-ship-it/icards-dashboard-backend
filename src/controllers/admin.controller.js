@@ -18,8 +18,13 @@ exports.getDashboardData = async (req, res, next) => {
 
 exports.getSettings = async (req, res, next) => {
     try {
-        const settings = await adminService.getSettings();
-        res.status(200).json(settings);
+        // Tìm bản ghi settings (thường collection này chỉ chứa 1 document duy nhất)
+        const settings = await adminService.getSettings(); // Hoặc await Settings.findOne(); tùy logic service của bạn
+
+        res.status(200).json({
+            message: "Lấy cấu hình thành công",
+            data: settings || {} // Trả về object rỗng nếu hệ thống chưa có cấu hình nào
+        });
     } catch (error) {
         next(error);
     }
