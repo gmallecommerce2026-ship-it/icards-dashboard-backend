@@ -66,28 +66,32 @@ const deleteDesignAsset = async (req, res, next) => {
  */
 const bulkCreateAssets = async (req, res, next) => {
     try {
-        const { metadata } = req.body;
-        const files = req.files;
+        let { metadata } = req.body;
+        const files = req.files || []; // Đã đổi thành req.files do dùng upload.any()
 
         if (!files || files.length === 0) {
             return res.status(400).json({ message: 'Vui lòng chọn ít nhất một file ảnh.' });
         }
 
-        const parsedMetadata = JSON.parse(metadata);
+        // Đề phòng trường hợp Frontend không gửi metadata hợp lệ
+        let parsedMetadata = [];
+        try { if(metadata) parsedMetadata = JSON.parse(metadata); } catch(e){}
 
-        const uploadPromises = files.map(async (file, index) => {
+        const assetsToCreate = [];
+
+        // DÙNG FOR...OF ĐỂ XỬ LÝ TUẦN TỰ TỪNG ẢNH MỘT (CHỐNG TRÀN RAM)
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
             const buffer = await sharp(file.buffer)
                 .resize({ width: 512, height: 512, fit: 'inside', withoutEnlargement: true })
                 .webp({ quality: 80 })
                 .toBuffer();
+            
             const { url } = await uploadFileToCloudflare(buffer);
-            return {
-                ...parsedMetadata[index], // Lấy name, category, assetType từ metadata
-                imgSrc: url
-            };
-        });
-
-        const assetsToCreate = await Promise.all(uploadPromises);
+            
+            const meta = parsedMetadata[i] || { name: file.originalname, category: 'General', assetType: 'image' };
+            assetsToCreate.push({ ...meta, imgSrc: url });
+        }
 
         const newAssets = await designAssetService.bulkCreateAssets(assetsToCreate);
 
