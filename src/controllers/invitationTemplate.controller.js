@@ -327,12 +327,18 @@ const createTemplate = async (req, res, next) => {
 
 const updateTemplate = async (req, res, next) => {
     try {
-        // Parse JSON strings from FormData
-        const updatePayload = {
-            ...req.body,
-            templateData: JSON.parse(req.body.templateData || '{}'),
-            loveGiftsButton: req.body.loveGiftsButton ? JSON.parse(req.body.loveGiftsButton) : null,
-        };
+        // 1. Tạo bản sao của req.body để tránh ảnh hưởng đến object gốc
+        const updatePayload = { ...req.body };
+        
+        // 2. Chỉ parse và ghi đè templateData nếu Client THỰC SỰ CÓ GỬI trường này lên
+        if (req.body.templateData !== undefined) {
+            updatePayload.templateData = req.body.templateData ? JSON.parse(req.body.templateData) : {};
+        }
+        
+        // 3. Tương tự với loveGiftsButton
+        if (req.body.loveGiftsButton !== undefined) {
+            updatePayload.loveGiftsButton = req.body.loveGiftsButton ? JSON.parse(req.body.loveGiftsButton) : null;
+        }
         
         // Pass the request files to the service function
         const updatedTemplate = await invitationTemplateService.updateTemplateById(
