@@ -3,12 +3,26 @@ const express = require('express');
 const router = express.Router();
 const fontController = require('../controllers/font.controller');
 const { upload } = require('../middleware/upload.middleware');
-
+const multer = require('multer');
+const handleUploadError = (uploadMiddleware) => {
+    return (req, res, next) => {
+        uploadMiddleware(req, res, (err) => {
+            if (err instanceof multer.MulterError) {
+                // Lỗi do Multer (ví dụ: vượt quá số lượng file)
+                return res.status(400).json({ message: `Lỗi upload: ${err.message}` });
+            } else if (err) {
+                // Lỗi từ fileFilter (sai định dạng)
+                return res.status(400).json({ message: err.message });
+            }
+            next();
+        });
+    };
+};
 router.route('/')
     .get(fontController.getFonts)
-    .post(upload.single('font'), fontController.createFont);
+    .post(handleUploadError(upload.single('font')), fontController.createFont);
 
-router.post('/bulk-upload', upload.array('fonts', 350), fontController.bulkCreateFonts);
+router.post('/bulk-upload', handleUploadError(upload.array('fonts', 350)), fontController.bulkCreateFonts);
 router.delete('/bulk-delete', fontController.bulkDeleteFonts);
 router.put('/bulk-category', fontController.bulkUpdateCategory);
 router.route('/:id')

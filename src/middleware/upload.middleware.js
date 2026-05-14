@@ -22,13 +22,25 @@ const FONT_MIME_TYPES = [
     'application/x-font-opentype',
     'application/vnd.ms-fontobject',
     'application/font-sfnt',
-    'application/octet-stream' 
+    'application/octet-stream', // Đôi khi Windows gửi font dưới dạng stream chung
+    'application/x-font-ttf',   // Bổ sung thêm
+    'font/collection',          // Bổ sung thêm
+    'font/opentype'             // Bổ sung thêm
 ];
 
 const fileFilter = (req, file, cb) => {
+    // 2. Lấy đuôi file để làm fallback check (Rất quan trọng cho Font)
+    const fileExtension = file.originalname.split('.').pop().toLowerCase();
+    const validFontExtensions = ['ttf', 'otf', 'woff', 'woff2'];
+
     const allowedImageMimeTypes = file.mimetype.startsWith('image/');
     const allowedVideoMimeTypes = file.mimetype.startsWith('video/'); 
-    const allowedFontMimeTypes = FONT_MIME_TYPES.includes(file.mimetype);
+    
+    // 3. Logic check Font: Hợp lệ nếu MimeType đúng HOẶC đuôi file chuẩn
+    const isFontMimeType = FONT_MIME_TYPES.includes(file.mimetype);
+    const isFontExtension = validFontExtensions.includes(fileExtension);
+    const allowedFontMimeTypes = isFontMimeType || isFontExtension;
+
     const allowedZipMimeTypes = [
         'application/zip', 
         'application/x-zip-compressed', 
@@ -38,11 +50,12 @@ const fileFilter = (req, file, cb) => {
     if (allowedImageMimeTypes || allowedFontMimeTypes || allowedZipMimeTypes || allowedVideoMimeTypes) {
         cb(null, true);
     } else {
-        if (file.originalname.toLowerCase().endsWith('.zip')) {
+        if (fileExtension === 'zip') {
             cb(null, true);
             return;
         }
-        cb(new Error('File không hợp lệ! Vui lòng chỉ tải lên ảnh, video, font chữ hoặc file .zip.'), false);
+        console.warn(`[Cảnh báo Upload] Bị từ chối: File ${file.originalname} có mimetype là ${file.mimetype}`);
+        cb(new Error(`File không hợp lệ! Vui lòng chỉ tải lên ảnh, video, font chữ (.ttf, .otf, .woff, .woff2) hoặc file .zip.`), false);
     }
 };
 
