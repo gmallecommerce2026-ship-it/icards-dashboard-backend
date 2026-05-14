@@ -291,7 +291,8 @@ const createTemplate = async (req, res, next) => {
             const uploadedFiles = await Promise.all(uploadPromises);
 
             uploadedFiles.forEach(uploadedFile => {
-                if (uploadedFile.fieldname === 'image') {
+                // Bổ sung thêm điều kiện chấp nhận 'generatedThumbnail'
+                if (uploadedFile.fieldname === 'image' || uploadedFile.fieldname === 'generatedThumbnail') {
                     newTemplatePayload.imgSrc = uploadedFile.url;
                 } 
                 else if (uploadedFile.fieldname.startsWith('background_')) {
