@@ -27,31 +27,29 @@ const updateTemplateById = async (id, updateData, files = []) => {
         throw new Error('Không tìm thấy mẫu thiệp để cập nhật.');
     }
 
-    // Directly assign properties from updateData
-    Object.assign(template, {
-        title: updateData.title,
-        category: updateData.category,
-        group: updateData.group,
-        type: updateData.type,
-        description: updateData.description,
-        isActive: updateData.isActive,
-        loveGiftsButton: updateData.loveGiftsButton,
-        templateData: updateData.templateData
+    // CÁCH MỚI: Chỉ cập nhật những trường có dữ liệu được gửi lên
+    const allowedFields = ['title', 'category', 'group', 'type', 'description', 'isActive', 'loveGiftsButton', 'templateData'];
+    allowedFields.forEach(field => {
+        if (updateData[field] !== undefined && updateData[field] !== 'undefined') {
+            template[field] = updateData[field];
+        }
     });
     
-    // Check for a new thumbnail file and upload it
-    const thumbnailFile = files.find(f => f.fieldname === 'generatedThumbnail');
+    // Xử lý cập nhật ảnh (Lưu ý: frontend bạn gửi field 'image', nên ta bắt cả 'image' và 'generatedThumbnail')
+    const thumbnailFile = files.find(f => f.fieldname === 'generatedThumbnail' || f.fieldname === 'image');
     if (thumbnailFile) {
-        // Assuming uploadFileToCloudflare handles buffer and returns { url }
         const { url: newThumbnailUrl } = await uploadFileToCloudflare(thumbnailFile.buffer, thumbnailFile.mimetype);
         template.imgSrc = newThumbnailUrl; 
     }
     
-    // Mark templateData as modified since it's a mixed type
-    template.markModified('templateData');
+    // Chỉ markModified nếu templateData thực sự được gửi lên và thay đổi
+    if (updateData.templateData !== undefined) {
+        template.markModified('templateData');
+    }
+    
     await template.save();
     
-    // Return the updated document
+    // Trả về document sau khi update
     return await InvitationTemplate.findById(id);
 };
 
