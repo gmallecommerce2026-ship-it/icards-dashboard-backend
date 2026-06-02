@@ -38,13 +38,13 @@ app.use(express.static('public'));
 const adminApiRouter = express.Router();
 adminApiRouter.use('/auth', authAdminRoutes);
 adminApiRouter.use('/', dataAdminRoutes);
+adminApiRouter.use('/template-blocks', templateBlockRoutes);
 app.use('/api/v1/admin', adminApiRouter);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/design-assets', designAssetRoutes);
 app.use('/api/v1/invitation-templates', invitationTemplateRoutes);
 app.use('/api/v1/public', publicRoutes);
 app.use('/api/v1/pages', pageRoutes);
-app.use('/api/v1/template-blocks', templateBlockRoutes);
 app.use(errorHandler);
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
