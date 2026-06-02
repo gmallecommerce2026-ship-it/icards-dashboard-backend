@@ -15,6 +15,7 @@ const userRoutes = require('./src/routes/user.routes');
 const invitationTemplateRoutes = require('./src/routes/invitationTemplate.routes');
 const publicRoutes = require('./src/routes/public.routes');
 const pageRoutes = require('./src/routes/page.routes');
+const templateBlockRoutes = require('./src/routes/templateBlock.routes');
 require('./src/config/passport');
 const app = express();
 const port = process.env.PORT || 8000;
@@ -43,6 +44,7 @@ app.use('/api/v1/design-assets', designAssetRoutes);
 app.use('/api/v1/invitation-templates', invitationTemplateRoutes);
 app.use('/api/v1/public', publicRoutes);
 app.use('/api/v1/pages', pageRoutes);
+app.use('/api/v1/template-blocks', templateBlockRoutes);
 app.use(errorHandler);
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
