@@ -28,6 +28,11 @@ const invitationTemplateSchema = new mongoose.Schema({
         },
         default: null
     },
+    occasionSectionId: {
+        type: String,
+        default: null, // null nghĩa là thiệp vãng lai, không nằm trong khối đặc biệt nào ngoài trang chủ
+        index: true    // Đánh index để tối ưu tốc độ truy vấn tốc độ cao ngoài trang chủ khi hệ thống phình to
+    }
 });
 
 invitationTemplateSchema.pre('save', function(next) {
