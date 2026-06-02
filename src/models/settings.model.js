@@ -12,7 +12,17 @@ navItemSchema.add({
     originalName: { type: String },
     children: [navItemSchema] 
 });
+const occasionSectionItemSchema = new mongoose.Schema({
+    key: { type: String, required: true }, // Lưu 'Category-Group-Type'
+}, { _id: false });
 
+const occasionSectionSchema = new mongoose.Schema({
+    id: { type: String, required: true },       // ID duy nhất cho section (vd: dùng uuid hoặc Date.now)
+    title: { type: String, required: true },    // Tên section (vd: "Thiệp Cưới Nổi Bật")
+    isVisible: { type: Boolean, default: true },// Cờ ẩn/hiện section trên trang chủ
+    order: { type: Number, default: 0 },        // Thứ tự của section
+    items: [occasionSectionItemSchema]          // Danh sách các thiệp bên trong
+}, { _id: false });
 const socialLinkSchema = new mongoose.Schema({
     id: { type: String, required: true },
     name: { type: String, required: true },
@@ -114,6 +124,11 @@ const settingsSchema = new mongoose.Schema({
         type: [String],
         default: [],
         description: 'Mảng các key (Category-Group-Type) lưu thứ tự hiển thị section Những dịp lan toả niềm vui'
+    },
+    occasionSections: {
+        type: [occasionSectionSchema],
+        default: [],
+        description: 'Mảng các khối (Section) phân loại Những dịp lan toả niềm vui'
     }
 }, { timestamps: true });
 

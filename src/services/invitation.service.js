@@ -417,7 +417,7 @@ const sendInvitationEmailToGuest = async (invitationId, guestId, userId) => {
                                 ${personalizedBody}
                                 <p style="margin: 0;">${finalBody}</p>
                                 <a href="${destinationUrl}" class="button">
-                                    Tìm hiểu thêm về chúng tôi
+                                    Mở thiệp
                                 </a>
                             </td>
                         </tr>
