@@ -17,11 +17,14 @@ const occasionSectionItemSchema = new mongoose.Schema({
 }, { _id: false });
 
 const occasionSectionSchema = new mongoose.Schema({
-    id: { type: String, required: true },       // ID duy nhất (vd: sec_171234567)
-    title: { type: String, required: true },    // Tên khối (vd: "Xu Hướng Mùa Cưới")
-    slug: { type: String, required: true },     // Slug URL (vd: "xu-huong-mua-cuoi")
-    isVisible: { type: Boolean, default: true },// Ẩn/hiện khối ngoài trang chủ
-    order: { type: Number, default: 0 }         // Thứ tự sắp xếp các khối
+    id: { type: String, required: true },       
+    title: { type: String, required: true },    
+    slug: { type: String },     
+    isVisible: { type: Boolean, default: true },
+    order: { type: Number, default: 0 },
+    
+    // BẠN PHẢI THÊM DÒNG NÀY ĐỂ LƯU ĐƯỢC CÁC THIỆP TRONG KHỐI
+    items: [occasionSectionItemSchema] 
 }, { _id: false });
 const socialLinkSchema = new mongoose.Schema({
     id: { type: String, required: true },

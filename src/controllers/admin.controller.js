@@ -29,7 +29,15 @@ exports.getSettings = async (req, res, next) => {
         next(error);
     }
 };
-
+const createSlug = (text) => {
+    return text.toString().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, 'd')
+        .replace(/([^0-9a-z-\s])/g, '')
+        .replace(/(\s+)/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-+|-+$/g, '');
+};
 exports.updateSettings = async (req, res, next) => {
     try {
         const settingsData = JSON.parse(req.body.settings || '{}');
@@ -106,6 +114,17 @@ exports.updateSettings = async (req, res, next) => {
             }
         }
         
+        if (settingsData.occasionSections && Array.isArray(settingsData.occasionSections)) {
+            settingsData.occasionSections = settingsData.occasionSections.map(sec => {
+                // Nếu section chưa có slug, tự động tạo slug từ title
+                if (!sec.slug && sec.title) {
+                    sec.slug = createSlug(sec.title);
+                }
+                return sec;
+            });
+        }
+        // === KẾT THÚC BỔ SUNG ===
+
         const updatedSettings = await adminService.updateSettings(settingsData);
         
         res.status(200).json({
