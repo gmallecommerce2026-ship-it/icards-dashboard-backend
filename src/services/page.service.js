@@ -6,6 +6,7 @@ const PageCategory = require('../models/pageCategory.model');
 require('../models/topic.model');
 require('../models/pageCategory.model');
 require('../models/user.model');
+require('../models/product.model'); // THÊM DÒNG NÀY ĐỂ POPULATE SẢN PHẨM KHÔNG BỊ LỖI
 
 // 1. Hàm Query nâng cao (Filter, Search, Pagination) - Thay thế cho getAllPages cũ
 const queryPages = async (query) => {
@@ -60,15 +61,29 @@ const queryPages = async (query) => {
   };
 };
 
-const getPageById = (id) => Page.findById(id).populate('category').populate('topics');
+// CẬP NHẬT: Thêm populate cho injectedBlocks.productId
+const getPageById = (id) => {
+    return Page.findById(id)
+        .populate('category')
+        .populate('topics')
+        .populate({
+            path: 'injectedBlocks.productId',
+            select: 'title price imgSrc images slug status' // Phục vụ Admin Edit Form
+        });
+};
+
+// CẬP NHẬT: Thêm populate cho injectedBlocks.productId
 const getPageBySlug = (slug) => {
     return Page.findOne({ slug, isPublished: true })
         .populate('author', 'name')
         .populate('category', 'name slug')
         .populate('topics', 'name slug')
-        .populate('relatedTemplate', 'name thumbnail slug code price'); 
+        .populate('relatedTemplate', 'name thumbnail slug code price')
+        .populate({
+            path: 'injectedBlocks.productId',
+            select: 'title price imgSrc images slug' // Phục vụ Frontend render
+        });
 };
-
 
 const createPage = (pageData) => Page.create(pageData);
 
@@ -84,7 +99,7 @@ const updatePageOrder = (pages) => {
     return Promise.all(promises);
 };
 
-// --- GIỮ LẠI CÁC HÀM CATEGORY NẾU BẠN CHƯA TÁCH SERVICE RIÊNG ---
+// --- GIỮ LẠI CÁC HÀM CATEGORY ---
 const getAllPageCategories = () => PageCategory.find().sort({ order: 1, createdAt: -1 }).populate('parent', 'name');
 const getPageCategoryById = (id) => PageCategory.findById(id);
 const createPageCategory = (data) => PageCategory.create(data);
@@ -96,7 +111,7 @@ const deletePageCategory = async (id) => {
 
 // EXPORT ĐẦY ĐỦ
 module.exports = {
-    queryPages, // Controller đang gọi hàm này
+    queryPages, 
     getPageById,
     getPageBySlug,
     createPage,
