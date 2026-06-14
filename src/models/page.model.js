@@ -16,7 +16,28 @@ const mongoose = require('mongoose');
 //         type: String
 //     },
 // }, { _id: true });
-
+const injectedBlockSchema = new mongoose.Schema({
+    type: { 
+        type: String, 
+        required: true,
+        enum: ['product', 'banner'] 
+    },
+    position: { 
+        type: Number, 
+        required: true,
+        default: 1,
+        description: 'Vị trí chèn (Ví dụ: 2 = chèn sau đoạn văn thứ 2)'
+    },
+    // Dữ liệu nếu type là 'product'
+    productId: { 
+        type: mongoose.Schema.ObjectId, 
+        ref: 'Product',
+        default: null
+    },
+    // Dữ liệu nếu type là 'banner'
+    bannerImg: { type: String, default: '' },
+    bannerLink: { type: String, default: '' }
+}, { _id: true });
 const pageSchema = new mongoose.Schema({
     title: {
         type: String,
@@ -39,6 +60,7 @@ const pageSchema = new mongoose.Schema({
         default: false,
         index: true,
     },
+    injectedBlocks: [injectedBlockSchema],
     category: {
         type: mongoose.Schema.ObjectId,
         ref: 'PageCategory'

@@ -2,7 +2,7 @@
 const pageService = require('../services/page.service');
 const { uploadFileToCloudflare } = require('../services/cloudflare.service');
 const sharp = require('sharp');
-
+const Page = require('../models/page.model');
 // --- Helper: Xử lý Thumbnail riêng biệt ---
 const processThumbnail = async (files) => {
     if (!files || files.length === 0) return null;
@@ -102,7 +102,12 @@ exports.getPages = async (req, res, next) => {
 
 exports.getPage = async (req, res, next) => {
     try {
-        const page = await pageService.getPageById(req.params.id);
+        // Cập nhật query trực tiếp để đảm bảo populate injectedBlocks cho Admin Form
+        const page = await Page.findById(req.params.id)
+            .populate('category')
+            .populate('topics')
+            .populate('injectedBlocks.productId'); // Quan trọng để hiển thị tên SP trong edit form
+            
         if (!page) return res.status(404).json({ message: 'Không tìm thấy trang' });
         res.status(200).json({ status: 'success', data: page });
     } catch (error) { next(error); }
@@ -110,12 +115,6 @@ exports.getPage = async (req, res, next) => {
 
 exports.createPage = async (req, res, next) => {
     try {
-        console.log("\n========== DEBUG: CREATE PAGE START ==========");
-        console.log("1. Dữ liệu gốc từ Frontend (req.body.content):");
-        console.log(req.body.content);
-        console.log("-> Kiểu dữ liệu gốc:", typeof req.body.content);
-        console.log("-> Có phải là mảng không?", Array.isArray(req.body.content));
-
         const pageData = { ...req.body };
         
         // 1. Xử lý Thumbnail
@@ -128,7 +127,7 @@ exports.createPage = async (req, res, next) => {
             pageData.relatedTemplate = null;
         }
 
-        // --- CHUẨN HOÁ CATEGORY & ISBLOG ---
+        // Chuẩn hoá Category & isBlog
         pageData.isBlog = pageData.isBlog === 'true' || pageData.isBlog === true;
         if (!pageData.isBlog) {
             pageData.category = null;
@@ -136,16 +135,21 @@ exports.createPage = async (req, res, next) => {
             pageData.category = null;
         }
 
-        // --- PARSE RELATED PRODUCTS ---
+        // --- CẬP NHẬT: Parse relatedProducts ---
         if (pageData.relatedProducts && typeof pageData.relatedProducts === 'string') {
-            try {
-                pageData.relatedProducts = JSON.parse(pageData.relatedProducts);
-            } catch (e) {
-                pageData.relatedProducts = []; 
+            try { pageData.relatedProducts = JSON.parse(pageData.relatedProducts); } catch (e) { pageData.relatedProducts = []; }
+        }
+
+        // --- THÊM MỚI: Parse injectedBlocks ---
+        if (pageData.injectedBlocks && typeof pageData.injectedBlocks === 'string') {
+            try { 
+                pageData.injectedBlocks = JSON.parse(pageData.injectedBlocks); 
+            } catch (e) { 
+                pageData.injectedBlocks = []; 
             }
         }
 
-        // --- PARSE DỮ LIỆU JSON AN TOÀN ---
+        // Parse Topics & SEO
         if (typeof safeJsonParse === 'function') {
              pageData.topics = safeJsonParse(pageData.topics, []);
              pageData.seo = safeJsonParse(pageData.seo, {});
@@ -154,51 +158,24 @@ exports.createPage = async (req, res, next) => {
              if (typeof pageData.seo === 'string') try { pageData.seo = JSON.parse(pageData.seo) } catch(e) { pageData.seo = {} }
         }
         
-        // --- XỬ LÝ NỘI DUNG CONTENT ---
+        // Xử lý content
         let contentRaw = pageData.content;
-        
-        console.log("\n2. Bắt đầu xử lý parse contentRaw...");
         if (typeof contentRaw === 'string' && (contentRaw.trim().startsWith('{') || contentRaw.trim().startsWith('['))) {
              let parsed = null;
              if (typeof safeJsonParse === 'function') {
                 parsed = safeJsonParse(contentRaw, null);
              } else {
-                try { parsed = JSON.parse(contentRaw); } catch(e) {
-                    console.log("-> Lỗi parse JSON content:", e.message);
-                }
+                try { parsed = JSON.parse(contentRaw); } catch(e) {}
              }
-             
-             if (parsed) {
-                 contentRaw = parsed;
-                 console.log("-> Đã parse content thành object/array thành công.");
-             }
-        } else {
-             console.log("-> ContentRaw không có dấu hiệu là JSON, giữ nguyên dạng String.");
+             if (parsed) contentRaw = parsed;
         }
-        
         pageData.content = contentRaw;
-        console.log("\n3. Dữ liệu chuẩn bị gửi cho Mongoose lưu (pageData.content):");
-        console.log(pageData.content);
-        console.log("-> Kiểu dữ liệu trước khi lưu:", typeof pageData.content);
-        console.log("-> Có phải là mảng không?", Array.isArray(pageData.content));
 
-        // Lưu vào DB
+        // Lưu DB
         const newPage = await pageService.createPage({ ...pageData, author: req.user.id });
-        
-        console.log("\n4. Dữ liệu sau khi Mongoose trả về (newPage.content):");
-        console.log("-> Kiểu dữ liệu sau khi lưu:", typeof newPage.content);
-        console.log("-> Có phải là mảng không?", Array.isArray(newPage.content));
-        if (Array.isArray(newPage.content)) {
-            console.log("-> 5 phần tử đầu tiên bị vỡ:", newPage.content.slice(0, 5));
-        }
-        console.log("========== DEBUG: CREATE PAGE END ==========\n");
-
         res.status(201).json({ status: 'success', data: newPage });
     } catch (error) {
-        console.error("LỖI KHI CREATE PAGE:", error);
-        if (error.code === 11000) {
-            return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại.' });
-        }
+        if (error.code === 11000) return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại.' });
         next(error);
     }
 };
@@ -216,42 +193,38 @@ exports.updatePage = async (req, res, next) => {
         }
         delete pageData.thumbnailUrl;
 
-        if (pageData.relatedTemplate === '' || pageData.relatedTemplate === 'null') {
-            pageData.relatedTemplate = null;
+        if (pageData.relatedTemplate === '' || pageData.relatedTemplate === 'null') pageData.relatedTemplate = null;
+
+        // --- CẬP NHẬT: Parse relatedProducts ---
+        if (pageData.relatedProducts && typeof pageData.relatedProducts === 'string') {
+            try { pageData.relatedProducts = JSON.parse(pageData.relatedProducts); } catch (e) { pageData.relatedProducts = []; }
         }
 
-        // --- FIX: Parse relatedProducts tương tự createPage ---
-        if (pageData.relatedProducts && typeof pageData.relatedProducts === 'string') {
-            try {
-                pageData.relatedProducts = JSON.parse(pageData.relatedProducts);
-            } catch (e) {
-                pageData.relatedProducts = [];
+        // --- THÊM MỚI: Parse injectedBlocks ---
+        if (pageData.injectedBlocks && typeof pageData.injectedBlocks === 'string') {
+            try { 
+                pageData.injectedBlocks = JSON.parse(pageData.injectedBlocks); 
+            } catch (e) { 
+                pageData.injectedBlocks = []; 
             }
         }
-        // -----------------------------------------------------
 
-        // 2. Logic dọn dẹp Category
+        // Logic dọn dẹp Category
         pageData.isBlog = pageData.isBlog === 'true' || pageData.isBlog === true;
-        if (!pageData.isBlog) {
-            pageData.category = null;
-        } else if (pageData.category === '' || pageData.category === 'null') {
-            pageData.category = null;
-        }
+        if (!pageData.isBlog) pageData.category = null;
+        else if (pageData.category === '' || pageData.category === 'null') pageData.category = null;
 
-        // 3. Parse và xử lý nội dung
-        // Nếu file này đã có hàm safeJsonParse thì dùng, nếu không thì dùng JSON.parse như trên
+        // Parse json fields
         if (typeof safeJsonParse === 'function') {
              pageData.topics = safeJsonParse(pageData.topics, []);
              pageData.seo = safeJsonParse(pageData.seo, {});
         } else {
-             // Fallback phòng khi hàm safeJsonParse chưa được import/định nghĩa
              if (typeof pageData.topics === 'string') try { pageData.topics = JSON.parse(pageData.topics) } catch(e) { pageData.topics = [] }
              if (typeof pageData.seo === 'string') try { pageData.seo = JSON.parse(pageData.seo) } catch(e) { pageData.seo = {} }
         }
         
+        // Parse content
         let contentRaw = pageData.content;
-        
-        // Chỉ parse nếu nó thực sự là chuỗi JSON (bắt đầu bằng { hoặc [)
         if (typeof contentRaw === 'string' && (contentRaw.trim().startsWith('{') || contentRaw.trim().startsWith('['))) {
              let parsed = null;
              if (typeof safeJsonParse === 'function') {
@@ -259,21 +232,15 @@ exports.updatePage = async (req, res, next) => {
              } else {
                 try { parsed = JSON.parse(contentRaw); } catch(e) {}
              }
-             
-             if (parsed) {
-                 contentRaw = parsed;
-             }
+             if (parsed) contentRaw = parsed;
         }
-        
         pageData.content = contentRaw;
 
         const updatedPage = await pageService.updatePage(req.params.id, pageData);
         if (!updatedPage) return res.status(404).json({ message: 'Không tìm thấy trang' });
         res.status(200).json({ status: 'success', data: updatedPage });
     } catch (error) { 
-        if (error.code === 11000) {
-            return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại.' });
-        }
+        if (error.code === 11000) return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại.' });
         next(error); 
     }
 };
@@ -288,15 +255,18 @@ exports.deletePage = async (req, res, next) => {
 
 exports.getPublicPageBySlug = async (req, res, next) => {
     try {
-        // 1. Lấy thông tin bài viết (Populate relatedProducts)
-        // Nếu pageService.getPageBySlug chưa populate, ta dùng mongoose query trực tiếp ở đây hoặc sửa Service.
-        // Ở đây mình viết đè query để đảm bảo có relatedProducts
         const page = await Page.findOne({ slug: req.params.slug, isPublished: true })
             .populate('category', 'name slug')
             .populate('author', 'name avatar')
+            // Populate relatedProducts (dự phòng nếu FE vẫn cần)
             .populate({
                 path: 'relatedProducts',
-                select: 'name price images slug' // Chỉ lấy trường cần thiết
+                select: 'title price images imgSrc slug' 
+            })
+            // --- THÊM MỚI: Populate sản phẩm trong injectedBlocks ---
+            .populate({
+                path: 'injectedBlocks.productId',
+                select: 'title price images imgSrc slug' 
             })
             .lean();
 
@@ -304,19 +274,17 @@ exports.getPublicPageBySlug = async (req, res, next) => {
             return res.status(404).json({ message: 'Trang không tồn tại hoặc chưa được xuất bản.' });
         }
 
-        // 2. Lấy 5 bài viết mới nhất (trừ bài hiện tại)
         const latestPosts = await Page.find({
             isBlog: true,
             isPublished: true,
-            _id: { $ne: page._id } // Loại trừ bài đang xem
+            _id: { $ne: page._id } 
         })
         .sort({ createdAt: -1 })
         .limit(5)
-        .select('title slug createdAt thumbnail category') // Chỉ lấy field cần thiết
+        .select('title slug createdAt thumbnail category') 
         .populate('category', 'name')
         .lean();
 
-        // 3. Trả về response gộp
         res.status(200).json({ 
             status: 'success', 
             data: page,
@@ -333,9 +301,7 @@ exports.getAllPageCategories = async (req, res, next) => {
     try {
         const categories = await pageService.getAllPageCategories();
         res.status(200).json({ status: 'success', data: categories });
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) { next(error); }
 };
 
 exports.createPageCategory = async (req, res, next) => {
@@ -343,9 +309,7 @@ exports.createPageCategory = async (req, res, next) => {
         const newCategory = await pageService.createPageCategory(req.body);
         res.status(201).json({ status: 'success', data: newCategory });
     } catch (error) {
-        if (error.code === 11000) {
-            return res.status(409).json({ message: 'Lỗi: Tên hoặc slug danh mục đã tồn tại.' });
-        }
+        if (error.code === 11000) return res.status(409).json({ message: 'Lỗi: Tên hoặc slug danh mục đã tồn tại.' });
         next(error);
     }
 };
@@ -356,9 +320,7 @@ exports.updatePageCategory = async (req, res, next) => {
         if (!updatedCategory) return res.status(404).json({ message: 'Không tìm thấy danh mục' });
         res.status(200).json({ status: 'success', data: updatedCategory });
     } catch (error) {
-        if (error.code === 11000) {
-            return res.status(409).json({ message: 'Lỗi: Tên hoặc slug danh mục đã tồn tại.' });
-        }
+        if (error.code === 11000) return res.status(409).json({ message: 'Lỗi: Tên hoặc slug danh mục đã tồn tại.' });
         next(error);
     }
 };
@@ -368,19 +330,13 @@ exports.deletePageCategory = async (req, res, next) => {
         const category = await pageService.deletePageCategory(req.params.id);
         if (!category) return res.status(404).json({ message: 'Không tìm thấy danh mục' });
         res.status(204).send();
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) { next(error); }
 };
 
 exports.updatePageOrder = async (req, res, next) => {
     try {
-        if (!Array.isArray(req.body.pages)) {
-            return res.status(400).json({ status: 'fail', message: 'Dữ liệu pages phải là một mảng.' });
-        }
+        if (!Array.isArray(req.body.pages)) return res.status(400).json({ status: 'fail', message: 'Dữ liệu pages phải là một mảng.' });
         await pageService.updatePageOrder(req.body.pages);
         res.status(200).json({ status: 'success', message: 'Thứ tự trang được cập nhật thành công.' });
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) { next(error); }
 };
