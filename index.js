@@ -15,7 +15,7 @@ const userRoutes = require('./src/routes/user.routes');
 const invitationTemplateRoutes = require('./src/routes/invitationTemplate.routes');
 const publicRoutes = require('./src/routes/public.routes');
 const pageRoutes = require('./src/routes/page.routes');
-const mediaRoutes = require('./media.routes');
+const mediaRoutes = require('./src/routes/media.routes');
 const templateBlockRoutes = require('./src/routes/templateBlock.routes');
 require('./src/config/passport');
 const app = express();
