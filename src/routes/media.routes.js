@@ -7,7 +7,7 @@ const router = express.Router();
 
 // Bắt buộc đăng nhập
 router.use(authMiddleware.protect);
-router.use(authMiddleware.restrictTo('admin', 'designer', 'marketing'));
+router.use(authMiddleware.authorize('admin', 'designer', 'marketing'));
 
 router.get('/', mediaController.getAllMedia);
 router.post('/upload', uploadMiddleware.single('file'), mediaController.uploadMedia);
