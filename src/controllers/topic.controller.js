@@ -3,13 +3,32 @@ const topicService = require('../services/topic.service');
 
 exports.getAllTopics = async (req, res, next) => {
     try {
-        const topics = await topicService.getAllTopics();
+        const topics = await topicService.getAllTopics(); // Trả về dạng Tree
         res.status(200).json({ status: 'success', data: topics });
     } catch (error) {
         next(error);
     }
 };
 
+exports.getPublicTopics = async (req, res, next) => {
+    try {
+        const topics = await topicService.getAllTopics(); // Trả về dạng Tree
+        res.status(200).json({ status: 'success', data: topics });
+    } catch (error) {
+        next(error);
+    }
+};
+exports.seedTopics = async (req, res, next) => {
+    try {
+        const addedCount = await topicService.seedFromCategories();
+        res.status(200).json({ 
+            status: 'success', 
+            message: `Seed thành công. Đã thêm ${addedCount} danh mục mới từ PageCategory sang Blog Topics.` 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
 exports.createTopic = async (req, res, next) => {
     try {
         const newTopic = await topicService.createTopic(req.body);

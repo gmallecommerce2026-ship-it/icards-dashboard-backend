@@ -15,6 +15,11 @@ const topicSchema = new mongoose.Schema({
         trim: true,
         lowercase: true,
     },
+    parentId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Topic',
+        default: null // null nghĩa là danh mục gốc (Cấp 1)
+    },
     order: {
         type: Number,
         default: 0
@@ -26,7 +31,8 @@ topicSchema.pre('save', async function(next) {
         this.slug = this.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
     }
     if (this.isNew) {
-        const highestOrderTopic = await this.constructor.findOne().sort('-order');
+        // Chỉ tìm order lớn nhất trong cùng 1 cấp (cùng parentId)
+        const highestOrderTopic = await this.constructor.findOne({ parentId: this.parentId }).sort('-order');
         this.order = (highestOrderTopic && typeof highestOrderTopic.order === 'number') ? highestOrderTopic.order + 1 : 1;
     }
     next();

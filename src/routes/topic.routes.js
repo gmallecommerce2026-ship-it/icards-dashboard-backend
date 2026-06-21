@@ -14,4 +14,6 @@ router.route('/:id')
     .put(topicController.updateTopic)
     .delete(topicController.deleteTopic);
 
+router.post('/seed', topicController.seedTopics);
+
 module.exports = router;
