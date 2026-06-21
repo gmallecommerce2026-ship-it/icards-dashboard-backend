@@ -26,12 +26,21 @@ const topicSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-topicSchema.pre('save', async function(next) {
-    if (this.isModified('name') && !this.slug) {
-        this.slug = this.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+topicSchema.pre('validate', function(next) {
+    if (this.name && (!this.slug || this.slug.trim() === '')) {
+        this.slug = this.name
+            .toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Loại bỏ dấu tiếng Việt
+            .replace(/đ/g, "d").replace(/Đ/g, "D") // Xử lý chữ Đ
+            .replace(/ /g, '-') // Đổi khoảng trắng thành dấu gạch ngang
+            .replace(/[^\w-]+/g, ''); // Xóa các ký tự đặc biệt
     }
+    next();
+});
+
+// 2. CHẠY TRƯỚC KHI LƯU VÀO DB (Tính toán số thứ tự)
+topicSchema.pre('save', async function(next) {
     if (this.isNew) {
-        // Chỉ tìm order lớn nhất trong cùng 1 cấp (cùng parentId)
         const highestOrderTopic = await this.constructor.findOne({ parentId: this.parentId }).sort('-order');
         this.order = (highestOrderTopic && typeof highestOrderTopic.order === 'number') ? highestOrderTopic.order + 1 : 1;
     }

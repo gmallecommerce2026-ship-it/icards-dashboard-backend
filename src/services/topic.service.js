@@ -57,21 +57,25 @@ const updateTopicOrder = (topics) => {
 };
 
 // HÀM MỚI: Seed dữ liệu từ PageCategory sang Topic
+// HÀM MỚI: Seed dữ liệu từ PageCategory sang Topic (ở cuối file topic.service.js)
 const seedFromCategories = async () => {
     const categories = await PageCategory.find().lean();
     let addedCount = 0;
 
     for (const cat of categories) {
-        // Kiểm tra xem slug đã tồn tại chưa để tránh lỗi duplicate
-        const existingTopic = await Topic.findOne({ slug: cat.slug });
+        // Sinh tạm slug nếu bên PageCategory bị rỗng
+        let validSlug = cat.slug;
+        if (!validSlug || validSlug.trim() === '') {
+            validSlug = cat.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/ /g, '-').replace(/[^\w-]+/g, '');
+        }
+
+        const existingTopic = await Topic.findOne({ slug: validSlug });
         
         if (!existingTopic) {
             await Topic.create({
                 name: cat.name,
-                slug: cat.slug,
+                slug: validSlug,
                 order: cat.order,
-                // Nếu PageCategory trong tương lai có parentId, nó cũng sẽ map sang đây.
-                // Các Topic hiện tại đã có trong DB sẽ giữ nguyên ở cấp 1 (parentId: null)
                 parentId: cat.parentId || null 
             });
             addedCount++;
