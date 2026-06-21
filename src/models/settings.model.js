@@ -3,28 +3,28 @@ const mongoose = require('mongoose');
 const navItemSchema = new mongoose.Schema({}, { _id: false });
 
 navItemSchema.add({
-    id: { type: String, required: true }, 
+    id: { type: String, required: true },
     title: { type: String, required: true },
     path: { type: String, required: true },
     order: { type: Number, default: 0 },
     isVisible: { type: Boolean, default: true },
     type: { type: String, enum: ['category', 'group', 'type'], required: true },
     originalName: { type: String },
-    children: [navItemSchema] 
+    children: [navItemSchema]
 });
 const occasionSectionItemSchema = new mongoose.Schema({
     key: { type: String, required: true }, // Lưu 'Category-Group-Type'
 }, { _id: false });
 
 const occasionSectionSchema = new mongoose.Schema({
-    id: { type: String, required: true },       
-    title: { type: String, required: true },    
-    slug: { type: String },     
+    id: { type: String, required: true },
+    title: { type: String, required: true },
+    slug: { type: String },
     isVisible: { type: Boolean, default: true },
     order: { type: Number, default: 0 },
-    
+
     // BẠN PHẢI THÊM DÒNG NÀY ĐỂ LƯU ĐƯỢC CÁC THIỆP TRONG KHỐI
-    items: [occasionSectionItemSchema] 
+    items: [occasionSectionItemSchema]
 }, { _id: false });
 const socialLinkSchema = new mongoose.Schema({
     id: { type: String, required: true },
@@ -49,15 +49,16 @@ const footerColumnSchema = new mongoose.Schema({
 const footerSchema = new mongoose.Schema({
     socialLinks: [socialLinkSchema],
     columns: [footerColumnSchema],
-    legalLinks: [footerLinkSchema] 
+    legalLinks: [footerLinkSchema]
 }, { _id: false });
 
 const bannerSchema = new mongoose.Schema({
     id: { type: String, required: true },
-    name: { type: String, default: '' }, 
+    name: { type: String, default: '' },
     isEnabled: { type: Boolean, default: true },
     displayPage: { type: String, default: 'all' },
-    mediaType: { type: String, enum: ['image', 'video'], default: 'image' },
+    // Bổ sung thêm 'html' vào enum
+    mediaType: { type: String, enum: ['image', 'video', 'html'], default: 'image' },
     imageUrl: { type: String, default: '' },
     videoUrl: { type: String, default: '' },
     title: { type: String, default: '' },
@@ -99,13 +100,13 @@ const settingsSchema = new mongoose.Schema({
                 keywords: String,
                 social: { ogTitle: String, ogDescription: String, ogImage: String }
             },
-            products: { 
+            products: {
                 title: String,
                 description: String,
                 keywords: String,
                 social: { ogTitle: String, ogDescription: String, ogImage: String }
             },
-            invitations: { 
+            invitations: {
                 title: String,
                 description: String,
                 keywords: String,
@@ -141,7 +142,7 @@ const initializeSettings = async () => {
         const settings = await Setting.findOne({ singletonKey: "main_settings" });
         if (!settings) {
             console.log("Creating default settings document...");
-            await Setting.create({ 
+            await Setting.create({
                 singletonKey: "main_settings"
                 // Bạn có thể thêm các giá trị mặc định khác ở đây nếu muốn
             });
@@ -149,7 +150,7 @@ const initializeSettings = async () => {
     } catch (error) {
         console.error("Error initializing settings:", error);
         // Thoát tiến trình nếu không thể khởi tạo cài đặt, vì đây là lỗi nghiêm trọng
-        process.exit(1); 
+        process.exit(1);
     }
 };
 
