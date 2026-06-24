@@ -3,10 +3,11 @@ const pageService = require('../services/page.service');
 const { uploadFileToCloudflare } = require('../services/cloudflare.service');
 const sharp = require('sharp');
 const Page = require('../models/page.model');
+
 // --- Helper: Xử lý Thumbnail riêng biệt ---
 const processThumbnail = async (files) => {
     if (!files || files.length === 0) return null;
-    
+
     // Tìm file có fieldname là 'thumbnail'
     const thumbFile = files.find(f => f.fieldname === 'thumbnail');
     if (!thumbFile) return null;
@@ -16,7 +17,7 @@ const processThumbnail = async (files) => {
             .resize({ width: 800, height: 500, fit: 'cover' }) // Resize chuẩn Card
             .webp({ quality: 80 })
             .toBuffer();
-        
+
         const { url } = await uploadFileToCloudflare(buffer);
         return url;
     } catch (error) {
@@ -38,7 +39,7 @@ const processContentFiles = async (contentBlocks, files) => {
             try {
                 const match = block.content.match(/\[\[file:(.*?)\]\]/);
                 if (!match) return block;
-                
+
                 const fileName = match[1];
                 const file = fileMap.get(fileName);
 
@@ -47,7 +48,7 @@ const processContentFiles = async (contentBlocks, files) => {
                         .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
                         .webp({ quality: 80 })
                         .toBuffer();
-                    
+
                     const { url } = await uploadFileToCloudflare(processedBuffer);
                     return { ...block, content: url };
                 }
@@ -93,7 +94,7 @@ exports.getPublicPages = async (req, res, next) => {
 exports.getPages = async (req, res, next) => {
     try {
         // Đã khớp với tên hàm trong Service mới
-        const result = await pageService.queryPages(req.query); 
+        const result = await pageService.queryPages(req.query);
         res.status(200).json({ status: 'success', ...result });
     } catch (error) {
         next(error);
@@ -107,7 +108,7 @@ exports.getPage = async (req, res, next) => {
             .populate('category')
             .populate('topics')
             .populate('injectedBlocks.productId'); // Quan trọng để hiển thị tên SP trong edit form
-            
+
         if (!page) return res.status(404).json({ message: 'Không tìm thấy trang' });
         res.status(200).json({ status: 'success', data: page });
     } catch (error) { next(error); }
@@ -116,7 +117,7 @@ exports.getPage = async (req, res, next) => {
 exports.createPage = async (req, res, next) => {
     try {
         const pageData = { ...req.body };
-        
+
         // 1. Xử lý Thumbnail
         const thumbnailUrl = await processThumbnail(req.files);
         if (thumbnailUrl) {
@@ -142,42 +143,46 @@ exports.createPage = async (req, res, next) => {
 
         // --- THÊM MỚI: Parse injectedBlocks ---
         if (pageData.injectedBlocks && typeof pageData.injectedBlocks === 'string') {
-            try { 
-                let parsedBlocks = JSON.parse(pageData.injectedBlocks); 
-                
+            try {
+                let parsedBlocks = JSON.parse(pageData.injectedBlocks);
+
                 // --- FIX LỖI CAST TO OBJECTID Ở ĐÂY ---
                 // Lọc qua các block, nếu productId rỗng thì chuyển thành null
-                pageData.injectedBlocks = parsedBlocks.map(block => {
-                    if (!block.productId || block.productId === "") {
-                        block.productId = null; 
+                pageData.injectedBlocks = parsedBlocks.filter(block => {
+                    // Lọc bỏ những block rác không hợp lệ trước khi lưu vào DB
+                    if (block.type === 'product' && (!block.productId || block.productId === "")) {
+                        return false; // Bỏ qua block này
                     }
-                    return block;
+                    if (block.type === 'banner' && (!block.bannerImg || block.bannerImg.trim() === "")) {
+                        return false; // Bỏ qua block này
+                    }
+                    return true;
                 });
 
-            } catch (e) { 
-                pageData.injectedBlocks = []; 
+            } catch (e) {
+                pageData.injectedBlocks = [];
             }
         }
 
         // Parse Topics & SEO
         if (typeof safeJsonParse === 'function') {
-             pageData.topics = safeJsonParse(pageData.topics, []);
-             pageData.seo = safeJsonParse(pageData.seo, {});
+            pageData.topics = safeJsonParse(pageData.topics, []);
+            pageData.seo = safeJsonParse(pageData.seo, {});
         } else {
-             if (typeof pageData.topics === 'string') try { pageData.topics = JSON.parse(pageData.topics) } catch(e) { pageData.topics = [] }
-             if (typeof pageData.seo === 'string') try { pageData.seo = JSON.parse(pageData.seo) } catch(e) { pageData.seo = {} }
+            if (typeof pageData.topics === 'string') try { pageData.topics = JSON.parse(pageData.topics) } catch (e) { pageData.topics = [] }
+            if (typeof pageData.seo === 'string') try { pageData.seo = JSON.parse(pageData.seo) } catch (e) { pageData.seo = {} }
         }
-        
+
         // Xử lý content
         let contentRaw = pageData.content;
         if (typeof contentRaw === 'string' && (contentRaw.trim().startsWith('{') || contentRaw.trim().startsWith('['))) {
-             let parsed = null;
-             if (typeof safeJsonParse === 'function') {
+            let parsed = null;
+            if (typeof safeJsonParse === 'function') {
                 parsed = safeJsonParse(contentRaw, null);
-             } else {
-                try { parsed = JSON.parse(contentRaw); } catch(e) {}
-             }
-             if (parsed) contentRaw = parsed;
+            } else {
+                try { parsed = JSON.parse(contentRaw); } catch (e) { }
+            }
+            if (parsed) contentRaw = parsed;
         }
         pageData.content = contentRaw;
 
@@ -212,20 +217,21 @@ exports.updatePage = async (req, res, next) => {
 
         // --- THÊM MỚI: Parse injectedBlocks ---
         if (pageData.injectedBlocks && typeof pageData.injectedBlocks === 'string') {
-            try { 
-                let parsedBlocks = JSON.parse(pageData.injectedBlocks); 
-                
-                // --- FIX LỖI CAST TO OBJECTID Ở ĐÂY ---
-                // Lọc qua các block, nếu productId rỗng thì chuyển thành null
+            try {
+                let parsedBlocks = JSON.parse(pageData.injectedBlocks);
+
                 pageData.injectedBlocks = parsedBlocks.map(block => {
-                    if (!block.productId || block.productId === "") {
-                        block.productId = null; 
-                    }
+                    if (!block.productId || block.productId === "") block.productId = null;
                     return block;
+                }).filter(block => {
+                    // Lọc bỏ dữ liệu rác trước khi lưu DB
+                    if (block.type === 'product' && !block.productId) return false;
+                    if (block.type === 'banner' && (!block.bannerImg || block.bannerImg.trim() === "")) return false;
+                    return true;
                 });
 
-            } catch (e) { 
-                pageData.injectedBlocks = []; 
+            } catch (e) {
+                pageData.injectedBlocks = [];
             }
         }
 
@@ -236,32 +242,32 @@ exports.updatePage = async (req, res, next) => {
 
         // Parse json fields
         if (typeof safeJsonParse === 'function') {
-             pageData.topics = safeJsonParse(pageData.topics, []);
-             pageData.seo = safeJsonParse(pageData.seo, {});
+            pageData.topics = safeJsonParse(pageData.topics, []);
+            pageData.seo = safeJsonParse(pageData.seo, {});
         } else {
-             if (typeof pageData.topics === 'string') try { pageData.topics = JSON.parse(pageData.topics) } catch(e) { pageData.topics = [] }
-             if (typeof pageData.seo === 'string') try { pageData.seo = JSON.parse(pageData.seo) } catch(e) { pageData.seo = {} }
+            if (typeof pageData.topics === 'string') try { pageData.topics = JSON.parse(pageData.topics) } catch (e) { pageData.topics = [] }
+            if (typeof pageData.seo === 'string') try { pageData.seo = JSON.parse(pageData.seo) } catch (e) { pageData.seo = {} }
         }
-        
+
         // Parse content
         let contentRaw = pageData.content;
         if (typeof contentRaw === 'string' && (contentRaw.trim().startsWith('{') || contentRaw.trim().startsWith('['))) {
-             let parsed = null;
-             if (typeof safeJsonParse === 'function') {
+            let parsed = null;
+            if (typeof safeJsonParse === 'function') {
                 parsed = safeJsonParse(contentRaw, null);
-             } else {
-                try { parsed = JSON.parse(contentRaw); } catch(e) {}
-             }
-             if (parsed) contentRaw = parsed;
+            } else {
+                try { parsed = JSON.parse(contentRaw); } catch (e) { }
+            }
+            if (parsed) contentRaw = parsed;
         }
         pageData.content = contentRaw;
 
         const updatedPage = await pageService.updatePage(req.params.id, pageData);
         if (!updatedPage) return res.status(404).json({ message: 'Không tìm thấy trang' });
         res.status(200).json({ status: 'success', data: updatedPage });
-    } catch (error) { 
+    } catch (error) {
         if (error.code === 11000) return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại.' });
-        next(error); 
+        next(error);
     }
 };
 
@@ -281,32 +287,39 @@ exports.getPublicPageBySlug = async (req, res, next) => {
             // Populate relatedProducts (dự phòng nếu FE vẫn cần)
             .populate({
                 path: 'relatedProducts',
-                select: 'title price images imgSrc slug' 
+                select: 'title price images imgSrc slug'
             })
             // --- THÊM MỚI: Populate sản phẩm trong injectedBlocks ---
             .populate({
                 path: 'injectedBlocks.productId',
-                select: 'title price images imgSrc slug' 
+                select: 'title price images imgSrc slug'
             })
             .lean();
 
         if (!page) {
             return res.status(404).json({ message: 'Trang không tồn tại hoặc chưa được xuất bản.' });
         }
-
+        if (page.injectedBlocks && page.injectedBlocks.length > 0) {
+            page.injectedBlocks = page.injectedBlocks.filter(block => {
+                if (block.type === 'product' && block.productId === null) {
+                    return false; // Bỏ qua vì sản phẩm này đã bị xóa khỏi Database
+                }
+                return true;
+            });
+        }
         const latestPosts = await Page.find({
             isBlog: true,
             isPublished: true,
-            _id: { $ne: page._id } 
+            _id: { $ne: page._id }
         })
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .select('title slug createdAt thumbnail category') 
-        .populate('category', 'name')
-        .lean();
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .select('title slug createdAt thumbnail category')
+            .populate('category', 'name')
+            .lean();
 
-        res.status(200).json({ 
-            status: 'success', 
+        res.status(200).json({
+            status: 'success',
             data: page,
             related: {
                 latestPosts: latestPosts
