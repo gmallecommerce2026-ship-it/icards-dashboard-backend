@@ -1,7 +1,7 @@
 // AdminBE/services/topic.service.js
 const Topic = require('../models/topic.model');
 const PageCategory = require('../models/pageCategory.model');
-const { Page } = require('../models/page.model');
+const Page = require('../models/page.model');
 
 // Hàm lấy dữ liệu và build thành cây
 const getAllTopics = async () => {
