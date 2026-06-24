@@ -148,14 +148,16 @@ exports.createPage = async (req, res, next) => {
 
                 // --- FIX LỖI CAST TO OBJECTID Ở ĐÂY ---
                 // Lọc qua các block, nếu productId rỗng thì chuyển thành null
-                pageData.injectedBlocks = parsedBlocks.filter(block => {
-                    // Lọc bỏ những block rác không hợp lệ trước khi lưu vào DB
-                    if (block.type === 'product' && (!block.productId || block.productId === "")) {
-                        return false; // Bỏ qua block này
-                    }
-                    if (block.type === 'banner' && (!block.bannerImg || block.bannerImg.trim() === "")) {
-                        return false; // Bỏ qua block này
-                    }
+                pageData.injectedBlocks = parsedBlocks.map(block => {
+                    if (!block.productId || block.productId === "") block.productId = null;
+                    return block;
+                }).filter(block => {
+                    if (block.type === 'product' && !block.productId) return false;
+                    if (block.type === 'banner' && (!block.bannerImg || block.bannerImg.trim() === "")) return false;
+
+                    // --- THÊM DÒNG NÀY: Kiểm tra chặn rác cho gmall-product ---
+                    if (block.type === 'gmall-product' && (!block.gmallData || !block.gmallData.id)) return false;
+
                     return true;
                 });
 
@@ -224,9 +226,12 @@ exports.updatePage = async (req, res, next) => {
                     if (!block.productId || block.productId === "") block.productId = null;
                     return block;
                 }).filter(block => {
-                    // Lọc bỏ dữ liệu rác trước khi lưu DB
                     if (block.type === 'product' && !block.productId) return false;
                     if (block.type === 'banner' && (!block.bannerImg || block.bannerImg.trim() === "")) return false;
+
+                    // --- THÊM DÒNG NÀY: Kiểm tra chặn rác cho gmall-product ---
+                    if (block.type === 'gmall-product' && (!block.gmallData || !block.gmallData.id)) return false;
+
                     return true;
                 });
 

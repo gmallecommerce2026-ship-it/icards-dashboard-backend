@@ -20,7 +20,7 @@ const injectedBlockSchema = new mongoose.Schema({
     type: { 
         type: String, 
         required: true,
-        enum: ['product', 'banner'] 
+        enum: ['product', 'banner', 'gmall-product']
     },
     position: { 
         type: Number, 
@@ -36,7 +36,11 @@ const injectedBlockSchema = new mongoose.Schema({
     },
     // Dữ liệu nếu type là 'banner'
     bannerImg: { type: String, default: '' },
-    bannerLink: { type: String, default: '' }
+    bannerLink: { type: String, default: '' },
+    gmallData: {
+        type: mongoose.Schema.Types.Mixed, // Dùng Mixed để lưu nguyên cục JSON { id, name, price, image, slug }
+        default: null
+    }
 }, { _id: true });
 const pageSchema = new mongoose.Schema({
     title: {
