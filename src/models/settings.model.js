@@ -56,7 +56,11 @@ const bannerSchema = new mongoose.Schema({
     id: { type: String, required: true },
     name: { type: String, default: '' },
     isEnabled: { type: Boolean, default: true },
-    displayPage: { type: String, default: 'all' },
+    displayPage: { 
+        type: String, 
+        enum: ['all', 'home', 'shop', 'professional', 'invitations', 'greetings', 'thanks', 'others'],
+        default: 'all' 
+    },
     // Bổ sung thêm 'html' vào enum
     mediaType: { type: String, enum: ['image', 'video', 'html'], default: 'image' },
     imageUrl: { type: String, default: '' },
