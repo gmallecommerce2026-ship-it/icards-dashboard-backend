@@ -4,13 +4,13 @@ const guestSchema = new mongoose.Schema({
     name: { type: String, required: true },
     phone: String,
     email: { type: String },
-    group: String, 
+    group: String,
     status: { type: String, enum: ['pending', 'attending', 'declined'], default: 'pending' },
     attendingCount: { type: Number, default: 1 },
     giftAmount: { type: Number, default: 0, min: [0, 'Số tiền mừng không thể là số âm'] },
-    giftUnit: { type: String, default: 'VND' }, 
-    salutation: { type: String, default: 'Trân trọng kính mời' }, 
-    emailStatus: { type: String, enum: ['Chưa gửi', 'Đã gửi', 'Thất bại'], default: 'Chưa gửi' } 
+    giftUnit: { type: String, default: 'VND' },
+    salutation: { type: String, default: 'Trân trọng kính mời' },
+    emailStatus: { type: String, enum: ['Chưa gửi', 'Đã gửi', 'Thất bại'], default: 'Chưa gửi' }
 });
 
 const wishSchema = new mongoose.Schema({
@@ -20,7 +20,7 @@ const wishSchema = new mongoose.Schema({
 });
 
 const canvasItemSchema = new mongoose.Schema({
-    id: { type: String, required: true }, 
+    id: { type: String, required: true },
     type: { type: String, required: true, enum: ['text', 'image'] },
     x: { type: Number, default: 0 },
     y: { type: Number, default: 0 },
@@ -39,7 +39,7 @@ const canvasItemSchema = new mongoose.Schema({
     fontStyle: { type: String, default: 'normal' }, // NEW
     textDecoration: { type: String, default: 'none' }, // NEW
     textAlign: { type: String, default: 'center' }, // NEW
-    isEditing: { type: Boolean }, 
+    isEditing: { type: Boolean },
     url: { type: String },
     brightness: { type: Number },
     contrast: { type: Number },
@@ -97,7 +97,7 @@ const invitationSchema = new mongoose.Schema({
         emailSubject: { type: String, default: '{LờiXưngHô} {TênKháchMời} Đến tham dự buổi tiệc cùng gia đình chúng tôi! - Thiệp mời online' },
         emailBody: { type: String, default: 'Một dấu mốc quan trọng đang đến và chúng tôi rất mong có bạn đồng hành trong khoảnh khắc đáng nhớ này.\nTrân trọng mời bạn tham dự sự kiện đặc biệt của chúng tôi.\nSự hiện diện của bạn là món quà ý nghĩa nhất mà chúng tôi có thể mong chờ!\n\nTrân trọng,\niCard' },
         eventDate: { type: Date, default: () => new Date() },
-        
+
         groomName: { type: String, default: 'Chú rể' },
         brideName: { type: String, default: 'Cô dâu' },
         groomInfo: { type: String, default: 'Thông tin về chú rể...' },
@@ -115,16 +115,20 @@ const invitationSchema = new mongoose.Schema({
             { type: String, default: 'https://placehold.co/1520x800/E9ECEF/333?text=Ảnh+cưới' },
             { type: String, default: 'https://placehold.co/1520x800/F1F3F5/333?text=Ảnh+cưới' }
         ],
-        invitationType: { 
-            type: String, 
-            enum: ['Thiệp cưới', 'Thiệp sinh nhật', 'Thiệp sự kiện chung', 'Thiệp cảm ơn'], 
-            default: 'Thiệp cưới' 
+        invitationType: {
+            type: String,
+            enum: ['Thiệp cưới', 'Thiệp sinh nhật', 'Thiệp sự kiện chung', 'Thiệp cảm ơn'],
+            default: 'Thiệp cưới'
         },
-        eventDescription: { 
-            type: String, 
-            default: 'Trân trọng kính mời bạn tới tham dự sự kiện quan trọng và cùng chia vui với gia đình chúng tôi.' 
+        eventDescription: {
+            type: String,
+            default: 'Trân trọng kính mời bạn tới tham dự sự kiện quan trọng và cùng chia vui với gia đình chúng tôi.'
         },
-        bannerImages: [{ type: String }],
+        bannerImages: [{
+            url: { type: String, trim: true },
+            buttonText: { type: String, trim: true, default: '' },
+            buttonLink: { type: String, trim: true, default: '' }
+        }],
         eventLocation: {
             address: { type: String, default: '' },
             lat: { type: Number, default: 21.028511 }, // Mặc định là Hà Nội
@@ -135,7 +139,7 @@ const invitationSchema = new mongoose.Schema({
             title: String,
             date: String,
             description: String,
-            imageUrl: String 
+            imageUrl: String
         }],
         contactGroom: { type: String, default: '09xxxxxxxx' },
         contactBride: { type: String, default: '08xxxxxxxx' },
@@ -147,7 +151,7 @@ const invitationSchema = new mongoose.Schema({
                 url: { type: String, trim: true },
             },
         ],
-        
+
         // Block 2
         groomName2: { type: String, default: '' },
         brideName2: { type: String, default: '' },
