@@ -68,7 +68,9 @@ const bannerSchema = new mongoose.Schema({
     title: { type: String, default: '' },
     subtitle: { type: String, default: '' },
     htmlContent: { type: String, default: '' },
-    link: { type: String, default: '' }
+    link: { type: String, default: '' },
+    buttonText: { type: String, default: '' },
+    buttonLink: { type: String, default: '' }
 }, { _id: false });
 
 
